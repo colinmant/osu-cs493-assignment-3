@@ -18,8 +18,8 @@ const User = sequelize.define('user', {
 })
 
 exports.User = User
-exports.UserClientFeilds = ['name', 'email', 'password', 'admin']
+exports.UserClientFields = ['name', 'email', 'password', 'admin']
 
 /* 
-* Set up one-many 
+* Set up relationships if needed
 */
