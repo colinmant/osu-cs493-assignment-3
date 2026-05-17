@@ -22,6 +22,7 @@
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "express": "^4.17.3",
+    "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
     "mysql2": "^3.22.3",
     "sequelize": "^6.19.0"
