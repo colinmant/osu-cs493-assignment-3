@@ -2,15 +2,19 @@ const { Router } = require('express')
 const { ValidationError } = require('sequelize')
 
 const { Review, ReviewClientFields } = require('../models/review')
+const { requireAuth } = require('../lib/auth')
 
 const router = Router()
 
 /*
  * Route to create a new review.
  */
-router.post('/', async function (req, res, next) {
+router.post('/', requireAuth, async function (req, res, next) {
+  if (req.body.userId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   try {
-    const review = await Review.create(req.body, ReviewClientFields)
+    const review = await Review.create(req.body, { fields: ReviewClientFields })
     res.status(201).send({ id: review.id })
   } catch (e) {
     if (e instanceof ValidationError) {
@@ -37,12 +41,13 @@ router.get('/:reviewId', async function (req, res, next) {
 /*
  * Route to update a review.
  */
-router.patch('/:reviewId', async function (req, res, next) {
+router.patch('/:reviewId', requireAuth, async function (req, res, next) {
   const reviewId = req.params.reviewId
-
-  /*
-   * Update review without allowing client to update businessId or userId.
-   */
+  const review = await Review.findByPk(reviewId)
+  if (!review) return next()
+  if (review.userId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   const result = await Review.update(req.body, {
     where: { id: reviewId },
     fields: ReviewClientFields.filter(
@@ -59,8 +64,13 @@ router.patch('/:reviewId', async function (req, res, next) {
 /*
  * Route to delete a review.
  */
-router.delete('/:reviewId', async function (req, res, next) {
+router.delete('/:reviewId', requireAuth, async function (req, res, next) {
   const reviewId = req.params.reviewId
+  const review = await Review.findByPk(reviewId)
+  if (!review) return next()
+  if (review.userId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   const result = await Review.destroy({ where: { id: reviewId }})
   if (result > 0) {
     res.status(204).send()

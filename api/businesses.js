@@ -4,6 +4,7 @@ const { ValidationError } = require('sequelize')
 const { Business, BusinessClientFields } = require('../models/business')
 const { Photo } = require('../models/photo')
 const { Review } = require('../models/review')
+const { requireAuth } = require('../lib/auth')
 
 const router = Router()
 
@@ -55,9 +56,12 @@ router.get('/', async function (req, res) {
 /*
  * Route to create a new business.
  */
-router.post('/', async function (req, res, next) {
+router.post('/', requireAuth, async function (req, res, next) {
+  if (req.body.ownerId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   try {
-    const business = await Business.create(req.body, BusinessClientFields)
+    const business = await Business.create(req.body, { fields: BusinessClientFields })
     res.status(201).send({ id: business.id })
   } catch (e) {
     if (e instanceof ValidationError) {
@@ -86,8 +90,13 @@ router.get('/:businessId', async function (req, res, next) {
 /*
  * Route to update data for a business.
  */
-router.patch('/:businessId', async function (req, res, next) {
+router.patch('/:businessId', requireAuth, async function (req, res, next) {
   const businessId = req.params.businessId
+  const business = await Business.findByPk(businessId)
+  if (!business) return next()
+  if (business.ownerId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   const result = await Business.update(req.body, {
     where: { id: businessId },
     fields: BusinessClientFields
@@ -102,8 +111,13 @@ router.patch('/:businessId', async function (req, res, next) {
 /*
  * Route to delete a business.
  */
-router.delete('/:businessId', async function (req, res, next) {
+router.delete('/:businessId', requireAuth, async function (req, res, next) {
   const businessId = req.params.businessId
+  const business = await Business.findByPk(businessId)
+  if (!business) return next()
+  if (business.ownerId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   const result = await Business.destroy({ where: { id: businessId }})
   if (result > 0) {
     res.status(204).send()

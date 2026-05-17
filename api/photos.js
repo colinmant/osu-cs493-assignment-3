@@ -2,15 +2,19 @@ const { Router } = require('express')
 const { ValidationError } = require('sequelize')
 
 const { Photo, PhotoClientFields } = require('../models/photo')
+const { requireAuth } = require('../lib/auth')
 
 const router = Router()
 
 /*
  * Route to create a new photo.
  */
-router.post('/', async function (req, res, next) {
+router.post('/', requireAuth, async function (req, res, next) {
+  if (req.body.userId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   try {
-    const photo = await Photo.create(req.body, PhotoClientFields)
+    const photo = await Photo.create(req.body, { fields: PhotoClientFields })
     res.status(201).send({ id: photo.id })
   } catch (e) {
     if (e instanceof ValidationError) {
@@ -37,12 +41,13 @@ router.get('/:photoId', async function (req, res, next) {
 /*
  * Route to update a photo.
  */
-router.patch('/:photoId', async function (req, res, next) {
+router.patch('/:photoId', requireAuth, async function (req, res, next) {
   const photoId = req.params.photoId
-
-  /*
-   * Update photo without allowing client to update businessId or userId.
-   */
+  const photo = await Photo.findByPk(photoId)
+  if (!photo) return next()
+  if (photo.userId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   const result = await Photo.update(req.body, {
     where: { id: photoId },
     fields: PhotoClientFields.filter(
@@ -59,8 +64,13 @@ router.patch('/:photoId', async function (req, res, next) {
 /*
  * Route to delete a photo.
  */
-router.delete('/:photoId', async function (req, res, next) {
+router.delete('/:photoId', requireAuth, async function (req, res, next) {
   const photoId = req.params.photoId
+  const photo = await Photo.findByPk(photoId)
+  if (!photo) return next()
+  if (photo.userId != res.locals.user && !res.locals.admin) {
+    return res.status(403).send({ error: 'Unauthorized' })
+  }
   const result = await Photo.destroy({ where: { id: photoId }})
   if (result > 0) {
     res.status(204).send()
