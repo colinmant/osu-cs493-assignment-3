@@ -74,11 +74,14 @@ router.post('/', async function (req, res, next) {
     }
   }
   try {
-    const user = await User.create(req.body, { fields: UserClientFields })
+    const fields = req.body.admin ? [...UserClientFields, 'admin'] : UserClientFields
+    const user = await User.create(req.body, { fields })
     res.status(201).send({ id: user.id })
   } catch (e) {
     if (e instanceof ValidationError) {
       res.status(400).send({ error: e.message })
+    } else {
+      throw e
     }
   }
 })
@@ -87,13 +90,17 @@ router.post('/', async function (req, res, next) {
 * Route to allow registered users to login using their email and password
 */
 router.post('/login', async function (req, res, next) {
-  const { email, password } = req.body
-  const user = await User.findOne({ where: { email: email } })
-  if (user && await bcrypt.compare(password, user.password)) {
-    const token = generateAuthToken(user.id, user.admin)
-    res.status(200).send({ token })
-  } else {
-    res.status(401).send({ error: 'Invalid Credentials' })
+  try {
+    const { email, password } = req.body
+    const user = await User.findOne({ where: { email: email } })
+    if (user && await bcrypt.compare(password, user.password)) {
+      const token = generateAuthToken(user.id, user.admin)
+      res.status(200).send({ token })
+    } else {
+      res.status(401).send({ error: 'Invalid Credentials' })
+    }
+  } catch (e) {
+    next(e)
   }
 })
 
@@ -104,13 +111,17 @@ router.get('/:userId', requireAuth, async function (req, res, next) {
   if (req.params.userId != res.locals.user && !res.locals.admin) {
     return res.status(403).send({ error: 'Unauthorized' })
   }
-  const user = await User.findByPk(req.params.userId, {
-    attributes: { exclude: ['password'] }
-  })
-  if (user) {
-    res.status(200).send(user)
-  } else {
-    next()
+  try {
+    const user = await User.findByPk(req.params.userId, {
+      attributes: { exclude: ['password'] }
+    })
+    if (user) {
+      res.status(200).send(user)
+    } else {
+      next()
+    }
+  } catch (e) {
+    next(e)
   }
 })
 

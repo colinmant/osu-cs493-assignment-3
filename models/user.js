@@ -13,11 +13,11 @@ const User = sequelize.define('user', {
             this.setDataValue('password', bcrypt.hashSync(value, 4))
         }
      },
-    admin: { type: DataTypes.BOOL, defaultValue: false, allowNull: false }
+    admin: { type: DataTypes.BOOLEAN, defaultValue: false, allowNull: false }
 })
 
 exports.User = User
-exports.UserClientFields = ['name', 'email', 'password', 'admin']
+exports.UserClientFields = ['name', 'email', 'password']
 
 /* 
 * Set up relationships if needed
